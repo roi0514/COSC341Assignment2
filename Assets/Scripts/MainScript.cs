@@ -10,12 +10,14 @@ public class MainScript : MonoBehaviour
     [SerializeField] GameObject container;
 
     private List<GameObject> circles;  // this List contains all the circles/targets created
+    private int currentTargetIndex = -1; 
 
     // Start is called before the first frame update
     void Start()
     {
         container.transform.localScale = containerDiameter * Vector3.one;
         GenerateCircles();
+        HighlightCurrentTarget();
     }
 
     void GenerateCircles()
@@ -35,12 +37,60 @@ public class MainScript : MonoBehaviour
             GameObject circle = Instantiate(circlePrefab, position, Quaternion.identity);
             circle.transform.SetParent(container.transform);
             circles.Add(circle);
+
+            
+            circle.AddComponent<CircleCollider2D>().isTrigger = true;
+            circle.AddComponent<Target>().Initialize(i, OnTargetSelected);
         }
     }
 
-    // Update is called once per frame
-    void Update()
+    void HighlightCurrentTarget()
     {
+        if (currentTargetIndex != -1)
+        {
+            circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.white;  
+        }
 
+        currentTargetIndex = Random.Range(0, numberOfCircles);
+        circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red; 
+    }
+
+    void OnTargetSelected(int idx)
+    {
+        if (idx == currentTargetIndex)
+        {
+            Debug.Log($"Circle Selected: Reference - {circles[idx]}, Position ID - {idx}");
+
+            circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.white;
+
+            currentTargetIndex = (currentTargetIndex + (numberOfCircles / 2)) % numberOfCircles;
+
+            circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red;
+        }
     }
 }
+
+public class Target : MonoBehaviour
+{
+    private int idx;
+    private System.Action<int> onSelectedCallback;
+
+    public void Initialize(int idx, System.Action<int> callback)
+    {
+        this.idx = idx;
+        this.onSelectedCallback = callback;
+    }
+
+    void OnMouseDown()
+    {
+        if (onSelectedCallback != null)
+        {
+            onSelectedCallback.Invoke(idx);
+        }
+    }
+}
+
+
+
+
+
