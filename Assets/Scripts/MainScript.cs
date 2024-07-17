@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class MainScript : MonoBehaviour
 {
@@ -25,6 +26,7 @@ public class MainScript : MonoBehaviour
     private float scaleRadius = 0.5f;
     private float scaleDistance = 5f;
 
+    //In the array in each index of combinations, the first index represents the radius. the second index represents the distance.
     public float[][] combinations;
 
     //the first round is set as 0
@@ -35,9 +37,9 @@ public class MainScript : MonoBehaviour
         //the value written in the settings.
         CAMERA_PROJECT_SIZE_VALUE = Camera.main.orthographicSize;
         scaleRadius = scaleRadius / CAMERA_PROJECT_SIZE_VALUE;
-        scaleDistance = 2*(scaleDistance / CAMERA_PROJECT_SIZE_VALUE);
+        scaleDistance = (scaleDistance / CAMERA_PROJECT_SIZE_VALUE);
 
-        GenerateCombinations();
+        GenerateCombinations(scaleRadius,scaleDistance);
         GenerateCircles(combinations[round][0], combinations[round][1]);
 
         HighlightStartingCurrentTarget();
@@ -71,23 +73,23 @@ public class MainScript : MonoBehaviour
     }
 
     //gives the 9 combinations into combinations[][] 
-    void GenerateCombinations() {
-        combinations = new float[9][];
+    void GenerateCombinations(float scaleRadius, float scaleDistance) {
         //For a fair evaluation, the particpants should get the same pattern of combinations in the same order. For dynamic change patterns, create a different method.
-        int radiusCount = 1;
-        int distanceCount = 1;
-        int combinationCount = 0;
-        while (combinationCount < numberOfCircles) {
-            combinations[combinationCount] = new float[2];
-            combinations[combinationCount][0] = radiusCount*scaleRadius;
-            combinations[combinationCount][1] = distanceCount*scaleDistance;
+        combinations = new float[9][];
+        float[] radiuses = new float[] { scaleRadius*1, scaleRadius*2, scaleRadius*3 };
+        float[] distance = new float[] { scaleDistance*1, scaleDistance * 2, scaleDistance * 3 };
+        int radiusCount = 0;
+        int distanceCount = 0;
+        for (int i = 0; i < numberOfCircles; i++) {
+            //the first index will represent the radius. The second distance.
+            combinations[i] = new float[2];
+            combinations[i][0] = radiuses[radiusCount];
+            combinations[i][1] = distance[distanceCount];
             distanceCount++;
-            if(distanceCount > 3) {
+            if (distanceCount== distance.Length) {
                 radiusCount++;
-                distanceCount = 1;
+                distanceCount = 0;
             }
-            combinationCount++;
-           
         }
         //resulting array if scaleRadius and scaleDistance are equal to 1f: [[1,1],[1,2],[1,3],[2,1],[2,2],...[3,3]]
         
@@ -101,7 +103,8 @@ public class MainScript : MonoBehaviour
         }*/
 
         currentTargetIndex = UnityEngine.Random.Range(0, numberOfCircles);
-        circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red; 
+        circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red;
+//        circles[currentTargetIndex].gameObject.transform.SetSiblingIndex(0);
     }
 
     void OnTargetSelected(int idx)
