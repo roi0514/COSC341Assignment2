@@ -122,7 +122,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &376856256
+--- !u!1 &331917231
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -130,7 +130,7 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 376856258}
+  - component: {fileID: 331917233}
   m_Layer: 0
   m_Name: Container
   m_TagString: Untagged
@@ -138,17 +138,17 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &376856258
+--- !u!4 &331917233
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 376856256}
+  m_GameObject: {fileID: 331917231}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 4, y: 4, z: 0}
+  m_LocalScale: {x: 4, y: 4, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -254,7 +254,7 @@ Camera:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 1
+    width: 0.5
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
@@ -303,10 +303,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e84917ef601bfb34d9a81d981a1847fe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  containerDiameter: 4
+  container: {fileID: 331917231}
   numberOfCircles: 9
   circlePrefab: {fileID: 6138439148460126686, guid: d17e339aaa49e6f419c5f3e73d1f28d0, type: 3}
-  container: {fileID: 376856256}
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -395,4 +394,4 @@ SceneRoots:
   m_Roots:
   - {fileID: 519420032}
   - {fileID: 619394802}
-  - {fileID: 376856258}
+  - {fileID: 331917233}
