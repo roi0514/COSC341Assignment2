@@ -104,6 +104,9 @@ public class MainScript : MonoBehaviour
 
         currentTargetIndex = UnityEngine.Random.Range(0, numberOfCircles);
         circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red;
+
+        //set the current circle to be above any other circle (so that when it is overlapping with another circle, the current circle comes up
+        circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 1;
 //        circles[currentTargetIndex].gameObject.transform.SetSiblingIndex(0);
     }
 
@@ -116,10 +119,13 @@ public class MainScript : MonoBehaviour
 
             circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.white;
 
+            //set the previous circle to a lower sorting order.
+            circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 0;
             //If the index is at 5, it becomes (5+(9/2))%9 = 0. The next index is set to 0.
             currentTargetIndex = (currentTargetIndex + (numberOfCircles / 2)) % numberOfCircles;
 
             circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red;
+            circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 1;
         }
         if(clickedCount > 8) {
             GoToNextRound();
