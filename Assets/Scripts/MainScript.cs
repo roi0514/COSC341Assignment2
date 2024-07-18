@@ -1,22 +1,29 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
 using Unity.VisualScripting;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
+using static UnityEngine.GraphicsBuffer;
 
 public class MainScript : MonoBehaviour
 {
+    Stopwatch stopwatch;
 
     [SerializeField] GameObject container;
 
     [SerializeField] int numberOfCircles = 9;
     [SerializeField] GameObject circlePrefab;
-
-    // this List contains all the circles/targets created
-    private List<GameObject> circles;  
+    [SerializeField] GameObject background;
+    private List<GameObject> circles;  // this List contains all the circles/targets created
     private int currentTargetIndex = -1;
     private int clickedCount;
+    private int round;
+    private string dataLogFilePath = "data_log.csv";
 
     private float CAMERA_PROJECT_SIZE_VALUE;
 
@@ -26,23 +33,29 @@ public class MainScript : MonoBehaviour
     private float scaleRadius = 0.5f;
     private float scaleDistance = 5f;
 
-    //In the array in each index of combinations, the first index represents the radius. the second index represents the distance.
-    public float[][] combinations;
-
-    //the first round is set as 0
-    private int round;
+    public object[][] combinations; // example: [ [technique1, radius1, distance1], [t2, r2, d2], ..., [tn, rn, dn] ]
 
     void Start()
     {
+        stopwatch = new Stopwatch();
+
+        using (StreamWriter writer = new StreamWriter(dataLogFilePath, true))
+        {
+            writer.WriteLine("Technique,Width,Amplitude,Time(ms),Correct");
+        }
+
+        background.AddComponent<Target>().Initialize(-1, OnTargetSelected);
+
         //the value written in the settings.
         CAMERA_PROJECT_SIZE_VALUE = Camera.main.orthographicSize;
         scaleRadius = scaleRadius / CAMERA_PROJECT_SIZE_VALUE;
         scaleDistance = (scaleDistance / CAMERA_PROJECT_SIZE_VALUE);
 
         GenerateCombinations(scaleRadius,scaleDistance);
-        GenerateCircles(combinations[round][0], combinations[round][1]);
+        GenerateCircles((float)combinations[round][1], (float)combinations[round][2]);
 
         HighlightStartingCurrentTarget();
+        stopwatch.Start();
     }
 
     public void GenerateCircles(float radius, float distance)
@@ -77,18 +90,23 @@ public class MainScript : MonoBehaviour
     //gives the 9 combinations into combinations[][] 
     void GenerateCombinations(float scaleRadius, float scaleDistance) {
         //For a fair evaluation, the particpants should get the same pattern of combinations in the same order. For dynamic change patterns, create a different method.
-        combinations = new float[9][];
+        string[] techniques = new string[] { "Mouse", "TouchPad" };
         float[] radiuses = new float[] { scaleRadius * 1, scaleRadius * 2, scaleRadius * 3 };
-        float[] distance = new float[] { scaleDistance * 1, scaleDistance * 2, scaleDistance * 3 };
+        float[] distances = new float[] { scaleDistance * 1, scaleDistance * 2, scaleDistance * 3 };
+        combinations = new object[techniques.Length * radiuses.Length * distances.Length][];
 
-        for (int i = 0; i < radiuses.Length; i++)
+        int index = 0;
+        for (int i = 0; i < techniques.Length; i++)
         {
-            for (int j = 0; j < distance.Length; j++)
+            for (int j = 0; j < radiuses.Length; j++)
             {
-                combinations[i * distance.Length + j] = new float[] { radiuses[i], distance[j] };
+                for (int k = 0; k < distances.Length; k++)
+                {
+                    combinations[index] = new object[] { techniques[i], radiuses[j], distances[k] };
+                    index++;
+                }
             }
         }
-        //resulting array if scaleRadius and scaleDistance are equal to 1f: [[1,1],[1,2],[1,3],[2,1],[2,2],...[3,3]]
     }
 
     void HighlightStartingCurrentTarget()
@@ -102,29 +120,40 @@ public class MainScript : MonoBehaviour
 
     void OnTargetSelected(int idx)
     {
-        if (idx == currentTargetIndex)
-        {
-            clickedCount++;
-            Debug.Log($"Circle Selected: Reference - {circles[idx]}, Position ID - {idx}");
+        bool isCorrect = idx == currentTargetIndex ? true : false;
 
-            Vector3 pos = circles[currentTargetIndex].transform.position;
-            circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.white;
-            circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, 0);
-            circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 0;
+        clickedCount++;
+        LogClickEvent(isCorrect);
 
-            //If the index is at 5, it becomes (5+(9/2))%9 = 0. The next index is set to 0.
-            currentTargetIndex = (currentTargetIndex + (numberOfCircles / 2)) % numberOfCircles;
+        Vector3 pos = circles[currentTargetIndex].transform.position;
+        circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.white;
+        circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, 0);
+        circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 0;
 
-            pos = circles[currentTargetIndex].transform.position;
-            circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red;
-            circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, -1);
-            circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 1;
-        }
+        //If the index is at 5, it becomes (5+(9/2))%9 = 0. The next index is set to 0.
+        currentTargetIndex = (currentTargetIndex + (numberOfCircles / 2)) % numberOfCircles;
+
+        pos = circles[currentTargetIndex].transform.position;
+        circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red;
+        circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, -1);
+        circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 1;
+
+        stopwatch.Restart();
 
         if (clickedCount > 8)
         {
             GoToNextRound();
             clickedCount = 0;
+        }
+    }
+
+    private void LogClickEvent(bool isHit)
+    {
+        object[] currentExperiment = combinations[round];
+        print($"radius: {currentExperiment[0]} distance: {currentExperiment[1]} Time taken: {stopwatch.ElapsedMilliseconds} ms, ");
+        using (StreamWriter writer = new StreamWriter(dataLogFilePath, true))
+        {
+            writer.WriteLine($"{(string)currentExperiment[0]}, {2 * (float)currentExperiment[1]}, {(float)currentExperiment[2]}, {stopwatch.ElapsedMilliseconds}, {isHit}");
         }
     }
     public void DestroyList() {
@@ -134,16 +163,15 @@ public class MainScript : MonoBehaviour
     }
     public void GoToNextRound() {
         round++;
-        if (round > 8) {
-            //end of test
-            DestroyList();
-
+        if (round >= combinations.Length)
+        {
+            #if UNITY_EDITOR
+                EditorApplication.isPlaying = false;
+            #endif
             return;
         }
         DestroyList();
-        //Create new circles.
-        GenerateCircles(combinations[round][0], combinations[round][1]);
-        //Highlight random circle.
+        GenerateCircles((float)combinations[round][1], (float)combinations[round][2]);
         HighlightStartingCurrentTarget();
     }
 }
