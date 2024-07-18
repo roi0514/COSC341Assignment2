@@ -63,6 +63,8 @@ public class MainScript : MonoBehaviour
             GameObject circle = Instantiate(circlePrefab, position, Quaternion.identity);
             circle.transform.SetParent(container.transform);
             circle.transform.localScale = new Vector3(radius, radius, circle.transform.localScale.z);
+            circle.transform.position = new Vector3(circle.transform.position.x, circle.transform.position.y, 0);
+            circle.GetComponent<SpriteRenderer>().sortingOrder = 0;
 
             circle.AddComponent<CircleCollider2D>().isTrigger = true;
             circle.AddComponent<Target>().Initialize(i, OnTargetSelected);
@@ -76,38 +78,26 @@ public class MainScript : MonoBehaviour
     void GenerateCombinations(float scaleRadius, float scaleDistance) {
         //For a fair evaluation, the particpants should get the same pattern of combinations in the same order. For dynamic change patterns, create a different method.
         combinations = new float[9][];
-        float[] radiuses = new float[] { scaleRadius*1, scaleRadius*2, scaleRadius*3 };
-        float[] distance = new float[] { scaleDistance*1, scaleDistance * 2, scaleDistance * 3 };
-        int radiusCount = 0;
-        int distanceCount = 0;
-        for (int i = 0; i < numberOfCircles; i++) {
-            //the first index will represent the radius. The second distance.
-            combinations[i] = new float[2];
-            combinations[i][0] = radiuses[radiusCount];
-            combinations[i][1] = distance[distanceCount];
-            distanceCount++;
-            if (distanceCount== distance.Length) {
-                radiusCount++;
-                distanceCount = 0;
+        float[] radiuses = new float[] { scaleRadius * 1, scaleRadius * 2, scaleRadius * 3 };
+        float[] distance = new float[] { scaleDistance * 1, scaleDistance * 2, scaleDistance * 3 };
+
+        for (int i = 0; i < radiuses.Length; i++)
+        {
+            for (int j = 0; j < distance.Length; j++)
+            {
+                combinations[i * distance.Length + j] = new float[] { radiuses[i], distance[j] };
             }
         }
         //resulting array if scaleRadius and scaleDistance are equal to 1f: [[1,1],[1,2],[1,3],[2,1],[2,2],...[3,3]]
-        
     }
+
     void HighlightStartingCurrentTarget()
     {
-        //Seems to work without this if clause, so I commented it out -- Dup (revert if necessary)
-        /*if (currentTargetIndex != -1)
-        {
-            circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.white;  
-        }*/
-
         currentTargetIndex = UnityEngine.Random.Range(0, numberOfCircles);
+        Vector3 pos = circles[currentTargetIndex].transform.position;
         circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red;
-
-        //set the current circle to be above any other circle (so that when it is overlapping with another circle, the current circle comes up
+        circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, -1);
         circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 1;
-//        circles[currentTargetIndex].gameObject.transform.SetSiblingIndex(0);
     }
 
     void OnTargetSelected(int idx)
@@ -117,17 +107,22 @@ public class MainScript : MonoBehaviour
             clickedCount++;
             Debug.Log($"Circle Selected: Reference - {circles[idx]}, Position ID - {idx}");
 
+            Vector3 pos = circles[currentTargetIndex].transform.position;
             circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.white;
-
-            //set the previous circle to a lower sorting order.
+            circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, 0);
             circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 0;
+
             //If the index is at 5, it becomes (5+(9/2))%9 = 0. The next index is set to 0.
             currentTargetIndex = (currentTargetIndex + (numberOfCircles / 2)) % numberOfCircles;
 
+            pos = circles[currentTargetIndex].transform.position;
             circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red;
+            circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, -1);
             circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 1;
         }
-        if(clickedCount > 8) {
+
+        if (clickedCount > 8)
+        {
             GoToNextRound();
             clickedCount = 0;
         }
