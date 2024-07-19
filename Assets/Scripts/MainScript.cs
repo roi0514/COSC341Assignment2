@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using Unity.Mathematics;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
@@ -15,6 +16,7 @@ public class MainScript : MonoBehaviour
     Stopwatch stopwatch;
 
     [SerializeField] GameObject container;
+    [SerializeField] int seed;
 
     [SerializeField] int numberOfCircles = 9;
     [SerializeField] GameObject circlePrefab;
@@ -33,7 +35,15 @@ public class MainScript : MonoBehaviour
     private float scaleRadius = 0.5f;
     private float scaleDistance = 5f;
 
-    public object[][] combinations; // example: [ [technique1, radius1, distance1], [t2, r2, d2], ..., [tn, rn, dn] ]
+    string[] techniques = new string[] { "Mouse", "TouchPad" };
+    float[] radiuses;
+    float[] distances;
+
+    private string currentRoundTechnique;
+
+    private object[][] combinations;
+    public object[][] mouseCombinations; // example: [ [technique1, radius1, distance1], [t2, r2, d2], ..., [tn, rn, dn] ]
+    public object[][] touchPadCombinations; // example: [ [technique1, radius1, distance1], [t2, r2, d2], ..., [tn, rn, dn] ]
 
     void Start()
     {
@@ -44,14 +54,34 @@ public class MainScript : MonoBehaviour
             writer.WriteLine("Technique,Width,Amplitude,Time(ms),Correct");
         }
 
+
+
         background.AddComponent<Target>().Initialize(-1, OnTargetSelected);
+
+        // SET CURRROUNDTECH
+        currentRoundTechnique = "Mouse";
 
         //the value written in the settings.
         CAMERA_PROJECT_SIZE_VALUE = Camera.main.orthographicSize;
         scaleRadius = scaleRadius / CAMERA_PROJECT_SIZE_VALUE;
         scaleDistance = (scaleDistance / CAMERA_PROJECT_SIZE_VALUE);
 
+        techniques = new string[] { "Mouse", "TouchPad" };
+        radiuses = new float[] { scaleRadius * 1, scaleRadius * 2, scaleRadius * 3 };
+        distances = new float[] { scaleDistance * 1, scaleDistance * 2, scaleDistance * 3 };
+
         GenerateCombinations(scaleRadius,scaleDistance);
+        mouseCombinations = new object[radiuses.Length * distances.Length][]; 
+        Array.Copy(combinations, mouseCombinations, radiuses.Length * distances.Length);
+
+        touchPadCombinations = new object[radiuses.Length * distances.Length][];
+        Array.Copy(combinations, radiuses.Length * distances.Length, touchPadCombinations, 0, radiuses.Length * distances.Length);
+
+        makeCombinationsRandom(mouseCombinations);
+        makeCombinationsRandom(touchPadCombinations);
+
+        combinations = "Mouse".Equals(currentRoundTechnique) ? mouseCombinations : touchPadCombinations;
+    
         GenerateCircles((float)combinations[round][1], (float)combinations[round][2]);
 
         HighlightStartingCurrentTarget();
@@ -90,9 +120,6 @@ public class MainScript : MonoBehaviour
     //gives the 9 combinations into combinations[][] 
     void GenerateCombinations(float scaleRadius, float scaleDistance) {
         //For a fair evaluation, the particpants should get the same pattern of combinations in the same order. For dynamic change patterns, create a different method.
-        string[] techniques = new string[] { "Mouse", "TouchPad" };
-        float[] radiuses = new float[] { scaleRadius * 1, scaleRadius * 2, scaleRadius * 3 };
-        float[] distances = new float[] { scaleDistance * 1, scaleDistance * 2, scaleDistance * 3 };
         combinations = new object[techniques.Length * radiuses.Length * distances.Length][];
 
         int index = 0;
@@ -107,7 +134,14 @@ public class MainScript : MonoBehaviour
                 }
             }
         }
+
+        UnityEngine.Debug.Log(combinations.Length);
+        UnityEngine.Debug.Log(combinations[0][1]);
+        UnityEngine.Debug.Log(combinations[0][2]);
+        UnityEngine.Debug.Log(combinations[1][1]);
+        UnityEngine.Debug.Log(combinations[1][2]);
     }
+
 
     void HighlightStartingCurrentTarget()
     {
@@ -174,6 +208,24 @@ public class MainScript : MonoBehaviour
         GenerateCircles((float)combinations[round][1], (float)combinations[round][2]);
         HighlightStartingCurrentTarget();
     }
+
+    //https://stackoverflow.com/questions/108819/best-way-to-randomize-an-array-with-net/110570#110570
+
+    private System.Random randomInstance = new System.Random();
+    public static void Shuffle<T>(System.Random rng, T[] array) {
+        int n = array.Length;
+        while (n > 1) {
+            int k = rng.Next(n--);
+            T temp = array[n];
+            array[n] = array[k];
+            array[k] = temp;
+        }
+    }
+
+    void makeCombinationsRandom(object[] array) {
+        Shuffle(randomInstance, array);
+
+    }
 }
 
 public class Target : MonoBehaviour
@@ -195,7 +247,25 @@ public class Target : MonoBehaviour
             onSelectedCallback.Invoke(idx);
         }
     }
+
+
 }
 
 
+/*//code from https://learn.microsoft.com/en-us/previous-versions/msp-n-p/ff650316(v=pandp.10)?redirectedfrom=MSDN
+public class RandomSingleton {
+    private static System.Random instance;
+
+    private RandomSingleton() { }
+
+    public static System.Random Instance {
+        get {
+            if (instance == null) {
+                instance = new System.Random();
+            }
+            return instance;
+        }
+    }
+
+}*/
 
