@@ -9,14 +9,15 @@ using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
+using static IHasNotification;
 using static UnityEngine.GraphicsBuffer;
 
-public class MainScript : MonoBehaviour
+public class MainScript : MonoBehaviour, IHasNotification
 {
     Stopwatch stopwatch;
 
     [SerializeField] GameObject container;
-    [SerializeField] int seed;
+    private static int seed = 1234;
 
     [SerializeField] int numberOfCircles = 9;
     [SerializeField] GameObject circlePrefab;
@@ -39,7 +40,8 @@ public class MainScript : MonoBehaviour
     float[] radiuses;
     float[] distances;
 
-    private string currentRoundTechnique;
+    private string currentRoundTechnique; public string GetCurrentRoundTechnique() {  return currentRoundTechnique; }
+    public event EventHandler<IHasNotification.OnNotificationAddedEventArgs> OnNotificationAdd;
 
     private object[][] combinations;
     public object[][] mouseCombinations; // example: [ [technique1, radius1, distance1], [t2, r2, d2], ..., [tn, rn, dn] ]
@@ -60,6 +62,9 @@ public class MainScript : MonoBehaviour
 
         // SET CURRROUNDTECH
         currentRoundTechnique = "Mouse";
+        OnNotificationAdd?.Invoke(this, new OnNotificationAddedEventArgs {
+            notification = currentRoundTechnique
+        });
 
         //the value written in the settings.
         CAMERA_PROJECT_SIZE_VALUE = Camera.main.orthographicSize;
@@ -156,21 +161,23 @@ public class MainScript : MonoBehaviour
     {
         bool isCorrect = idx == currentTargetIndex ? true : false;
 
-        clickedCount++;
+        if (isCorrect) {
+            clickedCount++;
+            Vector3 pos = circles[currentTargetIndex].transform.position;
+            circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.white;
+            circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, 0);
+            circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 0;
+
+            //If the index is at 5, it becomes (5+(9/2))%9 = 0. The next index is set to 0.
+            currentTargetIndex = (currentTargetIndex + (numberOfCircles / 2)) % numberOfCircles;
+
+            pos = circles[currentTargetIndex].transform.position;
+            circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red;
+            circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, -1);
+            circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 1;
+        }
+        //the csv will still log incorrect clicks. If you wish to change this, move the line below inside the if(isCorrect){} clause.
         LogClickEvent(isCorrect);
-
-        Vector3 pos = circles[currentTargetIndex].transform.position;
-        circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.white;
-        circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, 0);
-        circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 0;
-
-        //If the index is at 5, it becomes (5+(9/2))%9 = 0. The next index is set to 0.
-        currentTargetIndex = (currentTargetIndex + (numberOfCircles / 2)) % numberOfCircles;
-
-        pos = circles[currentTargetIndex].transform.position;
-        circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red;
-        circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, -1);
-        circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 1;
 
         stopwatch.Restart();
 
@@ -201,7 +208,11 @@ public class MainScript : MonoBehaviour
         {
             #if UNITY_EDITOR
                 EditorApplication.isPlaying = false;
-            #endif
+#endif
+            this.currentRoundTechnique = "TouchPad";
+            OnNotificationAdd?.Invoke(this, new OnNotificationAddedEventArgs {
+                notification = currentRoundTechnique
+            });
             return;
         }
         DestroyList();
@@ -211,7 +222,7 @@ public class MainScript : MonoBehaviour
 
     //https://stackoverflow.com/questions/108819/best-way-to-randomize-an-array-with-net/110570#110570
 
-    private System.Random randomInstance = new System.Random();
+    private System.Random randomInstance = new System.Random(seed);
     public static void Shuffle<T>(System.Random rng, T[] array) {
         int n = array.Length;
         while (n > 1) {
@@ -250,22 +261,3 @@ public class Target : MonoBehaviour
 
 
 }
-
-
-/*//code from https://learn.microsoft.com/en-us/previous-versions/msp-n-p/ff650316(v=pandp.10)?redirectedfrom=MSDN
-public class RandomSingleton {
-    private static System.Random instance;
-
-    private RandomSingleton() { }
-
-    public static System.Random Instance {
-        get {
-            if (instance == null) {
-                instance = new System.Random();
-            }
-            return instance;
-        }
-    }
-
-}*/
-
