@@ -8,6 +8,8 @@ public class ControlUISingle : MonoBehaviour
     [SerializeField] private TextMeshProUGUI notificationText;
 
     public void SetNotification(string notification) {
-        notificationText.text = notification; 
+        notificationText.text = notification;
     }
+
+
 }

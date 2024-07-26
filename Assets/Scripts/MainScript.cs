@@ -12,8 +12,7 @@ using UnityEngine.UI;
 using static IHasNotification;
 using static UnityEngine.GraphicsBuffer;
 
-public class MainScript : MonoBehaviour, IHasNotification
-{
+public class MainScript : MonoBehaviour, IHasNotification {
     Stopwatch stopwatch;
 
     [SerializeField] GameObject container;
@@ -36,16 +35,19 @@ public class MainScript : MonoBehaviour, IHasNotification
     private float scaleRadius = 0.5f;
     private float scaleDistance = 5f;
 
-    string[] techniques = new string[] { "Mouse", "TouchPad" };
+
     float[] radiuses;
     float[] distances;
 
-    private string currentRoundTechnique; public string GetCurrentRoundTechnique() {  return currentRoundTechnique; }
+    private string currentRoundTechnique;
     public event EventHandler<IHasNotification.OnNotificationAddedEventArgs> OnNotificationAdd;
 
     private object[][] combinations;
     public object[][] mouseCombinations; // example: [ [technique1, radius1, distance1], [t2, r2, d2], ..., [tn, rn, dn] ]
     public object[][] touchPadCombinations; // example: [ [technique1, radius1, distance1], [t2, r2, d2], ..., [tn, rn, dn] ]
+
+    private enum State{ Mouse, TouchPad };
+    private State currentState;
 
     void Start()
     {
@@ -53,17 +55,16 @@ public class MainScript : MonoBehaviour, IHasNotification
 
         using (StreamWriter writer = new StreamWriter(dataLogFilePath, true))
         {
-            writer.WriteLine("Technique,Width,Amplitude,Time(ms),Correct");
+            writer.WriteLine("Technique,Width,Amplitude,Time,Correct");
         }
-
-
 
         background.AddComponent<Target>().Initialize(-1, OnTargetSelected);
 
         // SET CURRROUNDTECH
-        currentRoundTechnique = "Mouse";
+        currentState = State.Mouse;
+
         OnNotificationAdd?.Invoke(this, new OnNotificationAddedEventArgs {
-            notification = currentRoundTechnique
+            notification = currentState.ToString()
         });
 
         //the value written in the settings.
@@ -71,7 +72,6 @@ public class MainScript : MonoBehaviour, IHasNotification
         scaleRadius = scaleRadius / CAMERA_PROJECT_SIZE_VALUE;
         scaleDistance = (scaleDistance / CAMERA_PROJECT_SIZE_VALUE);
 
-        techniques = new string[] { "Mouse", "TouchPad" };
         radiuses = new float[] { scaleRadius * 1, scaleRadius * 2, scaleRadius * 3 };
         distances = new float[] { scaleDistance * 1, scaleDistance * 2, scaleDistance * 3 };
 
@@ -85,7 +85,7 @@ public class MainScript : MonoBehaviour, IHasNotification
         makeCombinationsRandom(mouseCombinations);
         makeCombinationsRandom(touchPadCombinations);
 
-        combinations = "Mouse".Equals(currentRoundTechnique) ? mouseCombinations : touchPadCombinations;
+        combinations = currentState == State.Mouse ? mouseCombinations: touchPadCombinations;
     
         GenerateCircles((float)combinations[round][1], (float)combinations[round][2]);
 
@@ -125,8 +125,15 @@ public class MainScript : MonoBehaviour, IHasNotification
     //gives the 9 combinations into combinations[][] 
     void GenerateCombinations(float scaleRadius, float scaleDistance) {
         //For a fair evaluation, the particpants should get the same pattern of combinations in the same order. For dynamic change patterns, create a different method.
+        string[] techniques = new string[Enum.GetValues(typeof(State)).Length];
+        int enumIndex = 0;
+        //just making techniques = new string[] { "Mouse", "TouchPad" };
+        foreach (State state in Enum.GetValues(typeof(State))) {
+            techniques[enumIndex] = state.ToString();
+            enumIndex++;
+        }
+        
         combinations = new object[techniques.Length * radiuses.Length * distances.Length][];
-
         int index = 0;
         for (int i = 0; i < techniques.Length; i++)
         {
@@ -139,12 +146,6 @@ public class MainScript : MonoBehaviour, IHasNotification
                 }
             }
         }
-
-        UnityEngine.Debug.Log(combinations.Length);
-        UnityEngine.Debug.Log(combinations[0][1]);
-        UnityEngine.Debug.Log(combinations[0][2]);
-        UnityEngine.Debug.Log(combinations[1][1]);
-        UnityEngine.Debug.Log(combinations[1][2]);
     }
 
 
@@ -160,7 +161,6 @@ public class MainScript : MonoBehaviour, IHasNotification
     void OnTargetSelected(int idx)
     {
         bool isCorrect = idx == currentTargetIndex ? true : false;
-
         if (isCorrect) {
             clickedCount++;
             Vector3 pos = circles[currentTargetIndex].transform.position;
@@ -175,8 +175,10 @@ public class MainScript : MonoBehaviour, IHasNotification
             circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red;
             circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, -1);
             circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 1;
+
+
         }
-        //the csv will still log incorrect clicks. If you wish to change this, move the line below inside the if(isCorrect){} clause.
+        //the csv will still log incorrect clicks.
         LogClickEvent(isCorrect);
 
         stopwatch.Restart();
@@ -204,16 +206,24 @@ public class MainScript : MonoBehaviour, IHasNotification
     }
     public void GoToNextRound() {
         round++;
-        if (round >= combinations.Length)
+        if (round >= mouseCombinations.Length)
         {
-            #if UNITY_EDITOR
+
+            if (currentState == State.Mouse) {
+                currentState = State.TouchPad;
+                OnNotificationAdd?.Invoke(this, new OnNotificationAddedEventArgs {
+                    notification = currentState.ToString()
+                });
+                combinations = currentState == State.Mouse ? mouseCombinations : touchPadCombinations;
+                round = 0;
+            } else {
+#if UNITY_EDITOR
                 EditorApplication.isPlaying = false;
 #endif
-            this.currentRoundTechnique = "TouchPad";
-            OnNotificationAdd?.Invoke(this, new OnNotificationAddedEventArgs {
-                notification = currentRoundTechnique
-            });
-            return;
+                return;
+            }
+
+
         }
         DestroyList();
         GenerateCircles((float)combinations[round][1], (float)combinations[round][2]);

@@ -11,8 +11,7 @@ public class ControlUI : MonoBehaviour
 
     private IHasNotification hasNotification;
 
-    private void Start() {
-        //UpdateVisual();
+    private void Awake() {
         hasNotification = mainScript.GetComponent<IHasNotification>();
 
         hasNotification.OnNotificationAdd += HasNotification_OnNotificationAdd;
