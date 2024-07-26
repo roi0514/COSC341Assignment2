@@ -176,12 +176,12 @@ public class MainScript : MonoBehaviour, IHasNotification {
             circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, -1);
             circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 1;
 
-
+            stopwatch.Restart();
         }
         //the csv will still log incorrect clicks.
         LogClickEvent(isCorrect);
 
-        stopwatch.Restart();
+        
 
         if (clickedCount > 8)
         {
