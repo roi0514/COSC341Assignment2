@@ -1,12 +1,16 @@
 Technique,Width,Amplitude,Time,Correct
-Mouse, 0.2, 1, 7453, True
-Mouse, 0.2, 1, 667, True
-Mouse, 0.2, 1, 580, True
-Mouse, 0.2, 1, 734, True
-Mouse, 0.2, 1, 805, False
-Mouse, 0.2, 1, 1477, True
-Mouse, 0.2, 1, 694, False
-Mouse, 0.2, 1, 1421, True
-Technique,Width,Amplitude,Time,Correct
-Mouse, 0.2, 1, 1294, True
-Mouse, 0.2, 1, 547, True
+Mouse, 0.2, 1, 3887, True
+Mouse, 0.2, 1, 1357, False
+Mouse, 0.2, 1, 2438, False
+Mouse, 0.2, 1, 3388, False
+Mouse, 0.2, 1, 4180, False
+Mouse, 0.2, 1, 5023, False
+Mouse, 0.2, 1, 5885, False
+Mouse, 0.2, 1, 6724, False
+Mouse, 0.2, 1, 7532, False
+Mouse, 0.2, 1, 8314, True
+Mouse, 0.2, 1, 1250, True
+Mouse, 0.2, 1, 1578, False
+Mouse, 0.2, 1, 2369, False
+Mouse, 0.2, 1, 3272, False
+Mouse, 0.2, 1, 4059, True
