@@ -9,14 +9,14 @@ using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
+using static IHasNotification;
 using static UnityEngine.GraphicsBuffer;
 
-public class MainScript : MonoBehaviour
-{
+public class MainScript : MonoBehaviour, IHasNotification {
     Stopwatch stopwatch;
 
     [SerializeField] GameObject container;
-    [SerializeField] int seed;
+    private static int seed = 1234;
 
     [SerializeField] int numberOfCircles = 9;
     [SerializeField] GameObject circlePrefab;
@@ -35,15 +35,19 @@ public class MainScript : MonoBehaviour
     private float scaleRadius = 0.5f;
     private float scaleDistance = 5f;
 
-    string[] techniques = new string[] { "Mouse", "TouchPad" };
+
     float[] radiuses;
     float[] distances;
 
     private string currentRoundTechnique;
+    public event EventHandler<IHasNotification.OnNotificationAddedEventArgs> OnNotificationAdd;
 
     private object[][] combinations;
     public object[][] mouseCombinations; // example: [ [technique1, radius1, distance1], [t2, r2, d2], ..., [tn, rn, dn] ]
     public object[][] touchPadCombinations; // example: [ [technique1, radius1, distance1], [t2, r2, d2], ..., [tn, rn, dn] ]
+
+    private enum State{ Mouse, TouchPad };
+    private State currentState;
 
     void Start()
     {
@@ -51,22 +55,23 @@ public class MainScript : MonoBehaviour
 
         using (StreamWriter writer = new StreamWriter(dataLogFilePath, true))
         {
-            writer.WriteLine("Technique,Width,Amplitude,Time(ms),Correct");
+            writer.WriteLine("Technique,Width,Amplitude,Time,Correct");
         }
-
-
 
         background.AddComponent<Target>().Initialize(-1, OnTargetSelected);
 
         // SET CURRROUNDTECH
-        currentRoundTechnique = "Mouse";
+        currentState = State.Mouse;
+
+        OnNotificationAdd?.Invoke(this, new OnNotificationAddedEventArgs {
+            notification = currentState.ToString()
+        });
 
         //the value written in the settings.
         CAMERA_PROJECT_SIZE_VALUE = Camera.main.orthographicSize;
         scaleRadius = scaleRadius / CAMERA_PROJECT_SIZE_VALUE;
         scaleDistance = (scaleDistance / CAMERA_PROJECT_SIZE_VALUE);
 
-        techniques = new string[] { "Mouse", "TouchPad" };
         radiuses = new float[] { scaleRadius * 1, scaleRadius * 2, scaleRadius * 3 };
         distances = new float[] { scaleDistance * 1, scaleDistance * 2, scaleDistance * 3 };
 
@@ -80,7 +85,7 @@ public class MainScript : MonoBehaviour
         makeCombinationsRandom(mouseCombinations);
         makeCombinationsRandom(touchPadCombinations);
 
-        combinations = "Mouse".Equals(currentRoundTechnique) ? mouseCombinations : touchPadCombinations;
+        combinations = currentState == State.Mouse ? mouseCombinations: touchPadCombinations;
     
         GenerateCircles((float)combinations[round][1], (float)combinations[round][2]);
 
@@ -120,8 +125,15 @@ public class MainScript : MonoBehaviour
     //gives the 9 combinations into combinations[][] 
     void GenerateCombinations(float scaleRadius, float scaleDistance) {
         //For a fair evaluation, the particpants should get the same pattern of combinations in the same order. For dynamic change patterns, create a different method.
+        string[] techniques = new string[Enum.GetValues(typeof(State)).Length];
+        int enumIndex = 0;
+        //just making techniques = new string[] { "Mouse", "TouchPad" };
+        foreach (State state in Enum.GetValues(typeof(State))) {
+            techniques[enumIndex] = state.ToString();
+            enumIndex++;
+        }
+        
         combinations = new object[techniques.Length * radiuses.Length * distances.Length][];
-
         int index = 0;
         for (int i = 0; i < techniques.Length; i++)
         {
@@ -134,12 +146,6 @@ public class MainScript : MonoBehaviour
                 }
             }
         }
-
-        UnityEngine.Debug.Log(combinations.Length);
-        UnityEngine.Debug.Log(combinations[0][1]);
-        UnityEngine.Debug.Log(combinations[0][2]);
-        UnityEngine.Debug.Log(combinations[1][1]);
-        UnityEngine.Debug.Log(combinations[1][2]);
     }
 
 
@@ -155,24 +161,36 @@ public class MainScript : MonoBehaviour
     void OnTargetSelected(int idx)
     {
         bool isCorrect = idx == currentTargetIndex ? true : false;
+        if (isCorrect) {
+            clickedCount++;
+            Vector3 pos = circles[currentTargetIndex].transform.position;
+            circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.white;
+            circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, 0);
+            circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 0;
 
-        clickedCount++;
-        LogClickEvent(isCorrect);
+            //If the index is at 5, it becomes (5+(9/2))%9 = 0. The next index is set to 0.
+            currentTargetIndex = (currentTargetIndex + (numberOfCircles / 2)) % numberOfCircles;
 
-        Vector3 pos = circles[currentTargetIndex].transform.position;
-        circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.white;
-        circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, 0);
-        circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 0;
+            pos = circles[currentTargetIndex].transform.position;
+            circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red;
+            circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, -1);
+            circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 1;
 
-        //If the index is at 5, it becomes (5+(9/2))%9 = 0. The next index is set to 0.
-        currentTargetIndex = (currentTargetIndex + (numberOfCircles / 2)) % numberOfCircles;
 
-        pos = circles[currentTargetIndex].transform.position;
-        circles[currentTargetIndex].GetComponent<SpriteRenderer>().color = Color.red;
-        circles[currentTargetIndex].transform.position = new Vector3(pos.x, pos.y, -1);
-        circles[currentTargetIndex].GetComponent<SpriteRenderer>().sortingOrder = 1;
+        }
+        if (isCorrect) {
+            LogClickEvent(isCorrect);
+            stopwatch.Restart();
+        } else {
+            //the csv will still log incorrect clicks. The time elapsed will not be restarted when incorrect.
+            LogClickEvent(isCorrect);
+        }
 
-        stopwatch.Restart();
+
+
+
+
+        
 
         if (clickedCount > 8)
         {
@@ -197,12 +215,24 @@ public class MainScript : MonoBehaviour
     }
     public void GoToNextRound() {
         round++;
-        if (round >= combinations.Length)
+        if (round >= mouseCombinations.Length)
         {
-            #if UNITY_EDITOR
+
+            if (currentState == State.Mouse) {
+                currentState = State.TouchPad;
+                OnNotificationAdd?.Invoke(this, new OnNotificationAddedEventArgs {
+                    notification = currentState.ToString()
+                });
+                combinations = currentState == State.Mouse ? mouseCombinations : touchPadCombinations;
+                round = 0;
+            } else {
+#if UNITY_EDITOR
                 EditorApplication.isPlaying = false;
-            #endif
-            return;
+#endif
+                return;
+            }
+
+
         }
         DestroyList();
         GenerateCircles((float)combinations[round][1], (float)combinations[round][2]);
@@ -211,7 +241,7 @@ public class MainScript : MonoBehaviour
 
     //https://stackoverflow.com/questions/108819/best-way-to-randomize-an-array-with-net/110570#110570
 
-    private System.Random randomInstance = new System.Random();
+    private System.Random randomInstance = new System.Random(seed);
     public static void Shuffle<T>(System.Random rng, T[] array) {
         int n = array.Length;
         while (n > 1) {
@@ -250,22 +280,3 @@ public class Target : MonoBehaviour
 
 
 }
-
-
-/*//code from https://learn.microsoft.com/en-us/previous-versions/msp-n-p/ff650316(v=pandp.10)?redirectedfrom=MSDN
-public class RandomSingleton {
-    private static System.Random instance;
-
-    private RandomSingleton() { }
-
-    public static System.Random Instance {
-        get {
-            if (instance == null) {
-                instance = new System.Random();
-            }
-            return instance;
-        }
-    }
-
-}*/
-
